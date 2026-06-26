@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Le menu — O Paris Kebab</title>
+  <meta name="description" content="Composez votre commande chez O Paris Kebab : sandwichs, assiettes, tacos, paninis, burgers. Paiement sur place." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ================= NAVIGATION ================= -->
+  <header class="nav">
+    <div class="wrap nav__inner">
+      <a href="index.html" class="logo" aria-label="O Paris Kebab, accueil">
+        <svg class="logo__mark" viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="52" cy="52" r="36" fill="none" stroke="#fbf7f0" stroke-width="13"/>
+          <circle cx="52" cy="52" r="36" fill="none" stroke="#f47b20" stroke-width="10"/>
+          <g stroke-linecap="round" fill="none">
+            <path d="M64 40 L64 104" stroke="#fbf7f0" stroke-width="14"/>
+            <path d="M64 44 q30 1 30 19 q0 18 -30 18" stroke="#fbf7f0" stroke-width="14"/>
+            <path d="M64 40 L64 104" stroke="#f47b20" stroke-width="10"/>
+            <path d="M64 44 q30 1 30 19 q0 18 -30 18" stroke="#f47b20" stroke-width="10"/>
+          </g>
+        </svg>
+        <span class="logo__txt">
+          <b>PARIS KEBAB</b>
+          <small>Sandwichs · Paninis · Grillades</small>
+        </span>
+      </a>
+
+      <nav class="nav__links" aria-label="Navigation principale">
+        <a href="index.html">Accueil</a>
+        <a href="index.html#infos">Infos &amp; horaires</a>
+        <a href="index.html#avis">Avis</a>
+      </nav>
+
+      <button class="nav__cta" id="ouvrirPanier">
+        Panier <span class="panier-compte" id="panierCompte">0</span>
+      </button>
+      <button class="nav__burger" aria-label="Ouvrir le menu" aria-expanded="false">≡</button>
+    </div>
+  </header>
+
+  <!-- ================= EN-TÊTE MENU ================= -->
+  <section class="menu-head">
+    <div class="wrap">
+      <h1>Le menu</h1>
+      <p id="menuDelai">Composez vos produits, ajoutez au panier, réglez sur place au retrait.</p>
+    </div>
+  </section>
+
+  <!-- ================= ONGLETS CATÉGORIES ================= -->
+  <nav class="cats" aria-label="Catégories">
+    <div class="wrap cats__inner" id="catsBar"><!-- onglets injectés par JS --></div>
+  </nav>
+
+  <!-- ================= LISTE PRODUITS ================= -->
+  <main class="wrap menu-main">
+    <div id="menuContenu" aria-live="polite">
+      <p class="menu-loading">Chargement du menu…</p>
+    </div>
+  </main>
+
+  <!-- ================= TIROIR PANIER ================= -->
+  <div class="drawer-overlay" id="drawerOverlay" hidden></div>
+  <aside class="drawer" id="drawer" aria-label="Votre panier" aria-hidden="true">
+    <div class="drawer__head">
+      <h2>Votre panier</h2>
+      <button class="drawer__close" id="fermerPanier" aria-label="Fermer le panier">✕</button>
+    </div>
+    <div class="drawer__body" id="panierItems">
+      <p class="panier-vide">Votre panier est vide.</p>
+    </div>
+    <div class="drawer__foot">
+      <div class="drawer__articles">
+        <span id="panierArticles">0 article</span>
+        <button class="drawer__vider" id="viderPanier">Vider le panier</button>
+      </div>
+      <div class="drawer__total"><span>Total</span><b id="panierTotal">0,00 €</b></div>
+      <button class="btn btn--primary drawer__valider" id="allerCommande" disabled>
+        Valider la commande →
+      </button>
+      <p class="drawer__note">Paiement sur place (carte ou espèces) au retrait.</p>
+    </div>
+  </aside>
+
+  <!-- ================= TUNNEL DE COMMANDE (modal) ================= -->
+  <div class="modal-overlay" id="commandeOverlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="commandeTitre">
+      <button class="modal__close" id="fermerCommande" aria-label="Fermer">✕</button>
+      <h2 id="commandeTitre">Finaliser la commande</h2>
+      <div id="commandeForm">
+        <label class="champ">
+          <span>Votre nom</span>
+          <input type="text" id="clientNom" autocomplete="name" required />
+        </label>
+        <label class="champ">
+          <span>Téléphone</span>
+          <input type="tel" id="clientTel" autocomplete="tel" required />
+        </label>
+        <label class="champ">
+          <span>Mode de récupération</span>
+          <select id="clientMode">
+            <option value="a_emporter">À emporter</option>
+            <option value="sur_place">Sur place</option>
+          </select>
+        </label>
+        <label class="champ">
+          <span>Heure souhaitée</span>
+          <input type="time" id="clientHeure" />
+        </label>
+        <label class="champ">
+          <span>Commentaire (optionnel)</span>
+          <textarea id="clientCommentaire" placeholder="Ex : bien cuit, sauce à part, pas trop d'oignon…"></textarea>
+        </label>
+        <p class="modal__erreur" id="commandeErreur" hidden></p>
+        <button class="btn btn--primary" id="envoyerCommande" style="width:100%">
+          Confirmer la commande
+        </button>
+        <p class="modal__note">Aucun paiement en ligne. Vous réglez sur place au retrait.</p>
+      </div>
+      <div id="commandeSucces" hidden></div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script src="js/menu.js"></script>
+</body>
+</html>

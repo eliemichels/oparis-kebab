@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Admin — O Paris Kebab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --braise: #e23a17;
+    --braise-fonce: #b3261e;
+    --os: #fbf7f0;
+    --os-2: #f3ece1;
+    --encre: #1a191c;
+    --gris: #8a8178;
+    --vert: #1c8a4a;
+    --vert-bg: #e6f5ec;
+    --rouge-bg: #fdecea;
+    --jaune: #ffc40c;
+    --display: "Bebas Neue", "Arial Narrow", sans-serif;
+    --body: "Inter", system-ui, -apple-system, sans-serif;
+    --radius: 12px;
+    --ombre: 0 4px 18px rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--body);
+    background: var(--os);
+    color: var(--encre);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  /* --- Barre du haut --- */
+  header {
+    background: var(--encre);
+    color: var(--os);
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+  header .marque {
+    font-family: var(--display);
+    font-size: 26px;
+    letter-spacing: .5px;
+    line-height: 1;
+  }
+  header .marque b { color: var(--braise); }
+  header .marque small {
+    display: block;
+    font-family: var(--body);
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--gris);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  header .right { display: flex; align-items: center; gap: 14px; }
+  #majAuto { font-size: 12px; color: var(--gris); }
+  .btn {
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: transform .08s, opacity .15s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn--p { background: var(--braise); color: #fff; }
+  .btn--p:hover { background: var(--braise-fonce); }
+  .btn--ghost { background: transparent; color: var(--os); border: 1.5px solid rgba(255,255,255,.25); }
+  .btn--ghost:hover { background: rgba(255,255,255,.08); }
+  .btn--sm { padding: 6px 12px; font-size: 13px; }
+  .btn--danger { background: var(--rouge-bg); color: var(--braise-fonce); }
+  .btn--danger:hover { background: #fadbd8; }
+
+  /* --- Page de connexion --- */
+  #login {
+    min-height: calc(100vh - 56px);
+    display: grid;
+    place-items: center;
+    padding: 20px;
+  }
+  #login .carte {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--ombre);
+    padding: 36px 30px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+  }
+  #login h1 {
+    font-family: var(--display);
+    font-size: 34px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  #login p { color: var(--gris); font-size: 14px; margin-bottom: 22px; }
+  input, select, textarea {
+    font-family: var(--body);
+    font-size: 15px;
+    width: 100%;
+    padding: 11px 13px;
+    border: 1.5px solid #e0d8cc;
+    border-radius: 9px;
+    background: var(--os);
+    color: var(--encre);
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--braise);
+    background: #fff;
+  }
+  #login input { margin-bottom: 14px; text-align: center; }
+  #loginErr {
+    color: var(--braise-fonce);
+    font-size: 13px;
+    margin-top: 12px;
+    min-height: 18px;
+  }
+
+  /* --- Tableau de bord --- */
+  #app { display: none; padding: 22px; max-width: 1100px; margin: 0 auto; }
+
+  /* Onglets */
+  .onglets {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+    border-bottom: 2px solid var(--os-2);
+    flex-wrap: wrap;
+  }
+  .onglet {
+    font-family: var(--display);
+    font-size: 19px;
+    letter-spacing: .5px;
+    background: none;
+    border: none;
+    padding: 10px 16px;
+    cursor: pointer;
+    color: var(--gris);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+  }
+  .onglet.actif { color: var(--braise); border-bottom-color: var(--braise); }
+
+  .vue { display: none; }
+  .vue.actif { display: block; }
+
+  /* Stats du jour */
+  .stats {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--ombre);
+    padding: 16px 22px;
+    flex: 1;
+    min-width: 140px;
+  }
+  .stat .v { font-family: var(--display); font-size: 32px; color: var(--braise); line-height: 1; }
+  .stat .l { font-size: 12px; color: var(--gris); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+  /* Cartes commandes */
+  .cmd {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--ombre);
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    border-left: 5px solid var(--gris);
+  }
+  .cmd[data-statut="nouvelle"] { border-left-color: var(--braise); }
+  .cmd[data-statut="en_preparation"] { border-left-color: var(--jaune); }
+  .cmd[data-statut="prete"] { border-left-color: var(--vert); }
+  .cmd[data-statut="recuperee"] { border-left-color: #cfc6ba; opacity: .7; }
+  .cmd__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .cmd__num { font-family: var(--display); font-size: 22px; letter-spacing: .5px; }
+  .cmd__client { font-size: 14px; color: var(--gris); }
+  .cmd__total { font-family: var(--display); font-size: 24px; color: var(--braise); }
+  .cmd__items { margin: 12px 0; font-size: 14px; }
+  .cmd__item { padding: 4px 0; border-bottom: 1px dashed var(--os-2); }
+  .cmd__item:last-child { border-bottom: none; }
+  .cmd__item b { font-weight: 600; }
+  .cmd__item .perso { color: var(--gris); font-size: 13px; }
+  .cmd__actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+  .badge--nouvelle { background: var(--rouge-bg); color: var(--braise-fonce); }
+  .badge--en_preparation { background: #fff6d6; color: #9a7a00; }
+  .badge--prete { background: var(--vert-bg); color: var(--vert); }
+  .badge--recuperee { background: var(--os-2); color: var(--gris); }
+
+  /* Listes dispo / produits */
+  .filtre-cat { margin-bottom: 16px; max-width: 280px; }
+  .grille {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .ligne {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: var(--ombre);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .ligne.rupture { opacity: .55; }
+  .ligne .nom { font-weight: 600; font-size: 14px; }
+  .ligne .cat { font-size: 11px; color: var(--gris); text-transform: uppercase; letter-spacing: .5px; }
+  .ligne .prix { font-size: 12px; color: var(--gris); }
+
+  /* Interrupteur */
+  .switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #ccc; border-radius: 999px; transition: .2s;
+  }
+  .slider::before {
+    content: ""; position: absolute; height: 20px; width: 20px;
+    left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s;
+  }
+  .switch input:checked + .slider { background: var(--vert); }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+
+  /* En-tête de section + bouton */
+  .sect-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+  .sect-head h2 { font-family: var(--display); font-size: 24px; letter-spacing: .5px; }
+
+  /* Tableau produits */
+  .prod-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: var(--radius); overflow: hidden; box-shadow: var(--ombre); }
+  .prod-table th, .prod-table td { text-align: left; padding: 10px 12px; font-size: 14px; border-bottom: 1px solid var(--os-2); }
+  .prod-table th { background: var(--os-2); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--gris); }
+  .prod-table tr:last-child td { border-bottom: none; }
+  .prod-table .actions { display: flex; gap: 6px; }
+  .prix-cell { white-space: nowrap; font-size: 13px; }
+
+  /* Modale produit */
+  .modale-fond {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 60;
+    place-items: center;
+    padding: 20px;
+  }
+  .modale-fond.ouvert { display: grid; }
+  .modale {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 26px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modale h2 { font-family: var(--display); font-size: 26px; letter-spacing: .5px; margin-bottom: 18px; }
+  .champ { margin-bottom: 14px; }
+  .champ label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .champ .aide { font-size: 11px; color: var(--gris); font-weight: 400; }
+  .deux-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modale-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  .vide { text-align: center; color: var(--gris); padding: 40px 20px; font-size: 15px; }
+  .ingr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; padding: 4px; border: 1px solid var(--os-2); border-radius: 9px; }
+  .ingr-chk { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+  .ingr-chk:hover { background: var(--os-2); }
+  .ingr-chk input { width: auto; }
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--encre); color: #fff; padding: 12px 22px; border-radius: 999px;
+    font-size: 14px; z-index: 80; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  @media (max-width: 600px) {
+    .deux-cols { grid-template-columns: 1fr; }
+    .prod-table thead { display: none; }
+    .prod-table, .prod-table tbody, .prod-table tr, .prod-table td { display: block; width: 100%; }
+    .prod-table tr { margin-bottom: 12px; border-radius: 10px; box-shadow: var(--ombre); }
+    .prod-table td { border: none; border-bottom: 1px solid var(--os-2); }
+    .prod-table td::before { content: attr(data-th) " : "; font-weight: 600; color: var(--gris); }
+    .prod-table td.actions::before { content: ""; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="marque">
+    <b>O PARIS KEBAB</b>
+    <small>Back-office</small>
+  </div>
+  <div class="right">
+    <span id="majAuto"></span>
+    <button class="btn btn--ghost btn--sm" id="btnDeco" style="display:none">Déconnexion</button>
+  </div>
+</header>
+
+<!-- ====== CONNEXION ====== -->
+<section id="login">
+  <div class="carte">
+    <h1>Espace gérant</h1>
+    <p>Entrez le code d'accès pour gérer les commandes et le menu.</p>
+    <input type="password" id="codeInput" placeholder="Code d'accès" autocomplete="off" />
+    <button class="btn btn--p" id="btnConnexion" style="width:100%">Se connecter</button>
+    <div id="loginErr"></div>
+  </div>
+</section>
+
+<!-- ====== APPLICATION ====== -->
+<main id="app">
+  <div class="onglets">
+    <button class="onglet actif" data-vue="commandes">Commandes</button>
+    <button class="onglet" data-vue="dispo">Disponibilité</button>
+    <button class="onglet" data-vue="produits">Produits</button>
+  </div>
+
+  <!-- Vue Commandes -->
+  <section class="vue actif" id="vue-commandes">
+    <div class="stats">
+      <div class="stat"><div class="v" id="statNb">0</div><div class="l">Commandes du jour</div></div>
+      <div class="stat"><div class="v" id="statTotal">0,00 €</div><div class="l">Total du jour</div></div>
+    </div>
+    <div class="sect-head">
+      <h2>Commandes du jour</h2>
+      <button class="btn btn--ghost btn--sm" id="btnRefresh" style="color:var(--encre);border-color:#e0d8cc">↻ Actualiser</button>
+    </div>
+    <div id="listeCommandes"></div>
+  </section>
+
+  <!-- Vue Disponibilité -->
+  <section class="vue" id="vue-dispo">
+    <div class="sect-head"><h2>Rupture de stock</h2></div>
+    <p style="color:var(--gris);font-size:14px;margin-bottom:18px">
+      Désactivez un produit ou un ingrédient en rupture. Il disparaît du site client tant qu'il est éteint.
+    </p>
+    <h3 style="font-family:var(--display);font-size:18px;margin:16px 0 10px">Produits</h3>
+    <div class="grille" id="dispoProduits"></div>
+    <h3 style="font-family:var(--display);font-size:18px;margin:26px 0 10px">Ingrédients & options</h3>
+    <div class="grille" id="dispoOptions"></div>
+  </section>
+
+  <!-- Vue Produits -->
+  <section class="vue" id="vue-produits">
+    <div class="sect-head">
+      <h2>Gérer le menu</h2>
+      <button class="btn btn--p" id="btnNouveau">+ Nouveau produit</button>
+    </div>
+    <div class="filtre-cat">
+      <select id="filtreCat"><option value="">Toutes les catégories</option></select>
+    </div>
+    <table class="prod-table">
+      <thead>
+        <tr><th>Nom</th><th>Catégorie</th><th>Prix</th><th>Dispo</th><th></th></tr>
+      </thead>
+      <tbody id="listeProduits"></tbody>
+    </table>
+  </section>
+</main>
+
+<!-- ====== MODALE PRODUIT ====== -->
+<div class="modale-fond" id="modaleFond">
+  <div class="modale">
+    <h2 id="modaleTitre">Nouveau produit</h2>
+    <input type="hidden" id="pId" />
+    <div class="champ">
+      <label>Nom *</label>
+      <input type="text" id="pNom" placeholder="ex : Tacos 1 viande" />
+    </div>
+    <div class="champ">
+      <label>Catégorie *</label>
+      <select id="pCat"></select>
+    </div>
+    <div class="champ">
+      <label>Description</label>
+      <input type="text" id="pDesc" placeholder="ex : Galette, salade, frites…" />
+    </div>
+    <p style="font-size:12px;color:var(--gris);margin-bottom:10px">
+      Remplissez seulement les prix qui s'appliquent (laissez vide les autres).
+    </p>
+    <div class="deux-cols">
+      <div class="champ">
+        <label>Prix seul <span class="aide">(sandwich, boisson…)</span></label>
+        <input type="number" step="0.01" id="pSeul" placeholder="—" />
+      </div>
+      <div class="champ">
+        <label>Prix menu <span class="aide">(+ frites/boisson)</span></label>
+        <input type="number" step="0.01" id="pMenu" placeholder="—" />
+      </div>
+      <div class="champ">
+        <label>Prix classic <span class="aide">(assiette, tacos)</span></label>
+        <input type="number" step="0.01" id="pClassic" placeholder="—" />
+      </div>
+      <div class="champ">
+        <label>Prix maxi <span class="aide">(grande taille)</span></label>
+        <input type="number" step="0.01" id="pMaxi" placeholder="—" />
+      </div>
+    </div>
+    <div class="champ">
+      <label>Allergènes <span class="aide">(facultatif)</span></label>
+      <input type="text" id="pAllerg" placeholder="ex : gluten, lait" />
+    </div>
+    <div class="champ" style="max-width:120px">
+      <label>Ordre d'affichage</label>
+      <input type="number" id="pOrdre" value="0" />
+    </div>
+    <div class="champ" id="champIngredients" style="display:none">
+      <label>Ingrédients clés <span class="aide">(si en rupture, le produit devient indisponible)</span></label>
+      <div id="pIngredients" class="ingr-grid"></div>
+    </div>
+    <div id="modaleErr" style="color:var(--braise-fonce);font-size:13px;min-height:18px"></div>
+    <div class="modale-actions">
+      <button class="btn btn--ghost btn--sm" id="btnAnnuler" style="color:var(--encre);border-color:#e0d8cc">Annuler</button>
+      <button class="btn btn--p" id="btnEnregistrer">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var API = "/api/admin";
+  var code = "";                 // code admin en mémoire (session courante)
+  var categories = [];
+  var produits = [];
+  var toutesOptions = [];     // toutes les options (viandes, sauces...) pour les ingrédients clés
+  var ingredientsCles = {};   // { produit_id: [option_id, ...] }
+  var rafraichissement = null;
+
+  // --- Helpers réseau ---
+  function appel(methode, chemin, corps) {
+    var opts = {
+      method: methode,
+      headers: { "x-code-admin": code },
+    };
+    if (corps !== undefined) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(corps);
+    }
+    return fetch(API + chemin, opts).then(function (r) {
+      return r.json().then(function (data) {
+        if (!r.ok) throw new Error(data.erreur || "Erreur " + r.status);
+        return data;
+      });
+    });
+  }
+
+  function euros(v) {
+    if (v == null) return "—";
+    return Number(v).toFixed(2).replace(".", ",") + " €";
+  }
+
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+
+  // --- Connexion ---
+  var codeInput = document.getElementById("codeInput");
+  var loginErr = document.getElementById("loginErr");
+
+  function connexion() {
+    var saisi = codeInput.value.trim();
+    if (!saisi) { loginErr.textContent = "Entrez un code."; return; }
+    code = saisi;
+    // On teste le code en chargeant le récap du jour
+    appel("GET", "/jour")
+      .then(function () {
+        loginErr.textContent = "";
+        document.getElementById("login").style.display = "none";
+        document.getElementById("app").style.display = "block";
+        document.getElementById("btnDeco").style.display = "";
+        demarrer();
+      })
+      .catch(function (e) {
+        code = "";
+        loginErr.textContent = "Code incorrect.";
+      });
+  }
+  document.getElementById("btnConnexion").addEventListener("click", connexion);
+  codeInput.addEventListener("keydown", function (e) { if (e.key === "Enter") connexion(); });
+
+  document.getElementById("btnDeco").addEventListener("click", function () {
+    code = "";
+    if (rafraichissement) clearInterval(rafraichissement);
+    location.reload();
+  });
+
+  // --- Navigation onglets ---
+  var onglets = document.querySelectorAll(".onglet");
+  onglets.forEach(function (o) {
+    o.addEventListener("click", function () {
+      onglets.forEach(function (x) { x.classList.remove("actif"); });
+      o.classList.add("actif");
+      document.querySelectorAll(".vue").forEach(function (v) { v.classList.remove("actif"); });
+      document.getElementById("vue-" + o.dataset.vue).classList.add("actif");
+      if (o.dataset.vue === "dispo") chargerDispo();
+      if (o.dataset.vue === "produits") chargerProduits();
+    });
+  });
+
+  // --- Démarrage après connexion ---
+  function demarrer() {
+    chargerCommandes();
+    chargerCategories();
+    chargerOptionsEtCles();
+    // Rafraîchit les commandes toutes les 30 s
+    rafraichissement = setInterval(function () {
+      if (document.getElementById("vue-commandes").classList.contains("actif")) {
+        chargerCommandes(true);
+      }
+    }, 30000);
+  }
+
+  // Charge toutes les options + les ingrédients clés (pour la modale produit)
+  function chargerOptionsEtCles() {
+    appel("GET", "/disponibilites").then(function (data) {
+      toutesOptions = data.options || [];
+    }).catch(function () {});
+    appel("GET", "/ingredients-cles").then(function (map) {
+      ingredientsCles = map || {};
+    }).catch(function () {});
+  }
+
+  // =========================================================
+  //  COMMANDES
+  // =========================================================
+  var STATUTS = {
+    nouvelle: { label: "Nouvelle", suivant: "en_preparation", btn: "Mettre en préparation" },
+    en_preparation: { label: "En préparation", suivant: "prete", btn: "Marquer prête" },
+    prete: { label: "Prête", suivant: "recuperee", btn: "Marquer récupérée" },
+    recuperee: { label: "Récupérée", suivant: null, btn: null },
+  };
+
+  function chargerCommandes(silencieux) {
+    Promise.all([appel("GET", "/commandes"), appel("GET", "/jour")])
+      .then(function (res) {
+        var cmds = res[0], jour = res[1];
+        document.getElementById("statNb").textContent = jour.nb || 0;
+        document.getElementById("statTotal").textContent = euros(jour.total_jour || 0);
+        document.getElementById("majAuto").textContent =
+          "Maj " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        afficherCommandes(cmds);
+      })
+      .catch(function (e) { if (!silencieux) toast(e.message); });
+  }
+
+  function afficherCommandes(cmds) {
+    var box = document.getElementById("listeCommandes");
+    if (!cmds.length) {
+      box.innerHTML = '<div class="vide">Aucune commande aujourd\'hui.</div>';
+      return;
+    }
+    box.innerHTML = "";
+    cmds.forEach(function (c) {
+      var div = document.createElement("div");
+      div.className = "cmd";
+      div.dataset.statut = c.statut;
+      var s = STATUTS[c.statut] || STATUTS.nouvelle;
+      var heure = c.heure_retrait ? " · retrait " + c.heure_retrait : "";
+      var mode = c.mode_retrait === "sur_place" ? "Sur place" : "À emporter";
+      div.innerHTML =
+        '<div class="cmd__head">' +
+          '<div>' +
+            '<div class="cmd__num">' + c.numero + ' <span class="badge badge--' + c.statut + '">' + s.label + '</span></div>' +
+            '<div class="cmd__client">' + c.client_nom + ' · ' + c.client_tel + ' · ' + mode + heure + '</div>' +
+          '</div>' +
+          '<div class="cmd__total">' + euros(c.total) + '</div>' +
+        '</div>' +
+        '<div class="cmd__items" id="items-' + c.id + '"><em style="color:var(--gris);font-size:13px">Chargement du détail…</em></div>' +
+        '<div class="cmd__actions" id="act-' + c.id + '"></div>';
+      box.appendChild(div);
+
+      // Détail (items)
+      appel("GET", "/commandes/" + c.id).then(function (detail) {
+        var elI = document.getElementById("items-" + c.id);
+        elI.innerHTML = "";
+        (detail.items || []).forEach(function (it) {
+          var ligne = document.createElement("div");
+          ligne.className = "cmd__item";
+          var perso = it.personnalisation ? '<div class="perso">' + it.personnalisation + '</div>' : "";
+          var formule = it.formule ? ' <span style="color:var(--gris)">(' + it.formule + ')</span>' : "";
+          ligne.innerHTML = '<b>' + it.quantite + '× ' + it.produit_nom + '</b>' + formule + perso;
+          elI.appendChild(ligne);
+        });
+      }).catch(function () {});
+
+      // Actions statut
+      var act = document.getElementById("act-" + c.id);
+      if (s.suivant) {
+        var b = document.createElement("button");
+        b.className = "btn btn--p btn--sm";
+        b.textContent = s.btn;
+        b.addEventListener("click", function () { changerStatut(c.id, s.suivant); });
+        act.appendChild(b);
+      }
+      if (c.statut !== "nouvelle") {
+        var prec = document.createElement("button");
+        prec.className = "btn btn--ghost btn--sm";
+        prec.style.cssText = "color:var(--encre);border-color:#e0d8cc";
+        prec.textContent = "↩ Revenir";
+        var ordre = ["nouvelle", "en_preparation", "prete", "recuperee"];
+        var idx = ordre.indexOf(c.statut);
+        prec.addEventListener("click", function () { changerStatut(c.id, ordre[idx - 1]); });
+        act.appendChild(prec);
+      }
+    });
+  }
+
+  function changerStatut(id, statut) {
+    appel("PUT", "/commandes/" + id + "/statut", { statut: statut })
+      .then(function () { chargerCommandes(); })
+      .catch(function (e) { toast(e.message); });
+  }
+
+  document.getElementById("btnRefresh").addEventListener("click", function () { chargerCommandes(); });
+
+  // =========================================================
+  //  DISPONIBILITÉ
+  // =========================================================
+  function chargerDispo() {
+    appel("GET", "/disponibilites").then(function (data) {
+      rendreDispo("dispoProduits", data.produits, "/produits/");
+      rendreDispo("dispoOptions", data.options, "/options/", true);
+    }).catch(function (e) { toast(e.message); });
+  }
+
+  function rendreDispo(cible, liste, prefixe, estOption) {
+    var box = document.getElementById(cible);
+    box.innerHTML = "";
+    liste.forEach(function (el) {
+      var div = document.createElement("div");
+      div.className = "ligne" + (el.dispo ? "" : " rupture");
+      var sous = estOption ? el.type : ("cat. " + el.categorie_id);
+      div.innerHTML =
+        '<div><div class="nom">' + el.nom + '</div><div class="cat">' + sous + '</div></div>' +
+        '<label class="switch"><input type="checkbox" ' + (el.dispo ? "checked" : "") + '><span class="slider"></span></label>';
+      var input = div.querySelector("input");
+      input.addEventListener("change", function () {
+        appel("PUT", prefixe + el.id + "/dispo", { dispo: input.checked ? 1 : 0 })
+          .then(function () {
+            div.classList.toggle("rupture", !input.checked);
+            toast(el.nom + (input.checked ? " : disponible" : " : en rupture"));
+            if (estOption) chargerDispo(); // recharge car cascade possible
+          })
+          .catch(function (e) { toast(e.message); input.checked = !input.checked; });
+      });
+      box.appendChild(div);
+    });
+  }
+
+  // =========================================================
+  //  PRODUITS (CRUD)
+  // =========================================================
+  function chargerCategories() {
+    appel("GET", "/categories").then(function (cats) {
+      categories = cats;
+      var filtre = document.getElementById("filtreCat");
+      var pCat = document.getElementById("pCat");
+      var opts = cats.map(function (c) { return '<option value="' + c.id + '">' + c.nom + '</option>'; }).join("");
+      filtre.innerHTML = '<option value="">Toutes les catégories</option>' + opts;
+      pCat.innerHTML = opts;
+    });
+  }
+
+  document.getElementById("filtreCat").addEventListener("change", function () { rendreProduits(); });
+
+  function chargerProduits() {
+    appel("GET", "/produits").then(function (liste) {
+      produits = liste;
+      rendreProduits();
+    }).catch(function (e) { toast(e.message); });
+  }
+
+  function rendreProduits() {
+    var filtre = document.getElementById("filtreCat").value;
+    var tbody = document.getElementById("listeProduits");
+    tbody.innerHTML = "";
+    var liste = produits.filter(function (p) { return !filtre || String(p.categorie_id) === filtre; });
+    if (!liste.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="vide">Aucun produit.</div></td></tr>';
+      return;
+    }
+    liste.forEach(function (p) {
+      var prix = [];
+      if (p.prix_seul != null) prix.push("seul " + euros(p.prix_seul));
+      if (p.prix_menu != null) prix.push("menu " + euros(p.prix_menu));
+      if (p.prix_classic != null) prix.push("classic " + euros(p.prix_classic));
+      if (p.prix_maxi != null) prix.push("maxi " + euros(p.prix_maxi));
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td data-th="Nom"><b>' + p.nom + '</b>' + (p.dispo ? "" : ' <span class="badge badge--nouvelle">rupture</span>') + '</td>' +
+        '<td data-th="Catégorie">' + p.categorie_nom + '</td>' +
+        '<td data-th="Prix" class="prix-cell">' + (prix.join("<br>") || "—") + '</td>' +
+        '<td data-th="Dispo">' + (p.dispo ? "Oui" : "Non") + '</td>' +
+        '<td class="actions"></td>';
+      var actions = tr.querySelector(".actions");
+      var bMod = document.createElement("button");
+      bMod.className = "btn btn--ghost btn--sm";
+      bMod.style.cssText = "color:var(--encre);border-color:#e0d8cc";
+      bMod.textContent = "Modifier";
+      bMod.addEventListener("click", function () { ouvrirModale(p); });
+      var bSup = document.createElement("button");
+      bSup.className = "btn btn--danger btn--sm";
+      bSup.textContent = "Suppr.";
+      bSup.addEventListener("click", function () { supprimerProduit(p); });
+      actions.appendChild(bMod);
+      actions.appendChild(bSup);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- Modale ajout/modif ---
+  var modaleFond = document.getElementById("modaleFond");
+  var modaleErr = document.getElementById("modaleErr");
+
+  function ouvrirModale(p) {
+    modaleErr.textContent = "";
+    document.getElementById("modaleTitre").textContent = p ? "Modifier le produit" : "Nouveau produit";
+    document.getElementById("pId").value = p ? p.id : "";
+    document.getElementById("pNom").value = p ? p.nom : "";
+    document.getElementById("pCat").value = p ? p.categorie_id : (categories[0] && categories[0].id) || "";
+    document.getElementById("pDesc").value = p && p.description ? p.description : "";
+    document.getElementById("pSeul").value = p && p.prix_seul != null ? p.prix_seul : "";
+    document.getElementById("pMenu").value = p && p.prix_menu != null ? p.prix_menu : "";
+    document.getElementById("pClassic").value = p && p.prix_classic != null ? p.prix_classic : "";
+    document.getElementById("pMaxi").value = p && p.prix_maxi != null ? p.prix_maxi : "";
+    document.getElementById("pAllerg").value = p && p.allergenes ? p.allergenes : "";
+    document.getElementById("pOrdre").value = p ? p.ordre : 0;
+
+    // Ingrédients clés : seulement pour un produit existant (besoin de son id)
+    var champIng = document.getElementById("champIngredients");
+    var boxIng = document.getElementById("pIngredients");
+    if (p) {
+      champIng.style.display = "";
+      var dejaCles = ingredientsCles[p.id] || [];
+      // On propose les viandes + suppléments comme ingrédients clés possibles
+      var candidats = toutesOptions.filter(function (o) {
+        return o.type === "viande" || o.type === "supplement";
+      });
+      boxIng.innerHTML = "";
+      if (!candidats.length) {
+        boxIng.innerHTML = '<span style="font-size:13px;color:var(--gris)">Aucune option disponible.</span>';
+      }
+      candidats.forEach(function (o) {
+        var coche = dejaCles.indexOf(o.id) >= 0 ? "checked" : "";
+        var lab = document.createElement("label");
+        lab.className = "ingr-chk";
+        lab.innerHTML = '<input type="checkbox" value="' + o.id + '" ' + coche + '> ' + o.nom +
+          ' <span style="color:var(--gris);font-size:11px">(' + o.type + ')</span>';
+        boxIng.appendChild(lab);
+      });
+    } else {
+      // Nouveau produit : on cache (il faut d'abord l'enregistrer)
+      champIng.style.display = "none";
+      boxIng.innerHTML = "";
+    }
+
+    modaleFond.classList.add("ouvert");
+  }
+  function fermerModale() { modaleFond.classList.remove("ouvert"); }
+
+  document.getElementById("btnNouveau").addEventListener("click", function () { ouvrirModale(null); });
+  document.getElementById("btnAnnuler").addEventListener("click", fermerModale);
+  modaleFond.addEventListener("click", function (e) { if (e.target === modaleFond) fermerModale(); });
+
+  document.getElementById("btnEnregistrer").addEventListener("click", function () {
+    var id = document.getElementById("pId").value;
+    var corps = {
+      nom: document.getElementById("pNom").value.trim(),
+      categorie_id: document.getElementById("pCat").value,
+      description: document.getElementById("pDesc").value.trim(),
+      prix_seul: document.getElementById("pSeul").value,
+      prix_menu: document.getElementById("pMenu").value,
+      prix_classic: document.getElementById("pClassic").value,
+      prix_maxi: document.getElementById("pMaxi").value,
+      allergenes: document.getElementById("pAllerg").value.trim(),
+      ordre: document.getElementById("pOrdre").value,
+    };
+    if (!corps.nom) { modaleErr.textContent = "Le nom est obligatoire."; return; }
+    if (!corps.categorie_id) { modaleErr.textContent = "Choisissez une catégorie."; return; }
+
+    var prom = id
+      ? appel("PUT", "/produits/" + id, corps)
+      : appel("POST", "/produits", corps);
+    prom.then(function (rep) {
+      var pid = id || (rep && rep.id);
+      // Sauvegarde des ingrédients clés (seulement si la section est visible)
+      var champIng = document.getElementById("champIngredients");
+      if (pid && champIng.style.display !== "none") {
+        var coches = [];
+        document.querySelectorAll("#pIngredients input:checked").forEach(function (c) {
+          coches.push(Number(c.value));
+        });
+        return appel("PUT", "/produits/" + pid + "/ingredients-cles", { option_ids: coches })
+          .then(function () {
+            ingredientsCles[pid] = coches;
+          });
+      }
+    }).then(function () {
+      fermerModale();
+      toast(id ? "Produit modifié" : "Produit ajouté");
+      chargerProduits();
+    }).catch(function (e) { modaleErr.textContent = e.message; });
+  });
+
+  function supprimerProduit(p) {
+    if (!confirm('Supprimer "' + p.nom + '" ? Cette action est définitive.')) return;
+    appel("DELETE", "/produits/" + p.id)
+      .then(function () { toast("Produit supprimé"); chargerProduits(); })
+      .catch(function (e) { toast(e.message); });
+  }
+})();
+</script>
+</body>
+</html>

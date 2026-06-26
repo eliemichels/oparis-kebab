@@ -178,4 +178,167 @@ router.put("/allergenes/:id", async (req, res) => {
   }
 });
 
+// =============================================================
+//  GESTION DES PRODUITS (ajout / modification / suppression)
+// =============================================================
+
+// GET /api/admin/categories -> liste des catégories (pour le formulaire)
+router.get("/categories", async (req, res) => {
+  try {
+    const [cats] = await pool.query(
+      "SELECT id, nom FROM categories ORDER BY ordre"
+    );
+    res.json(cats);
+  } catch (e) {
+    res.status(500).json({ erreur: "Erreur catégories." });
+  }
+});
+
+// GET /api/admin/produits -> tous les produits (même indisponibles), avec leur catégorie
+router.get("/produits", async (req, res) => {
+  try {
+    const [produits] = await pool.query(
+      `SELECT p.id, p.categorie_id, c.nom AS categorie_nom, p.nom, p.description,
+              p.prix_seul, p.prix_menu, p.prix_classic, p.prix_maxi,
+              p.allergenes, p.dispo, p.ordre
+         FROM produits p
+         JOIN categories c ON c.id = p.categorie_id
+        ORDER BY p.categorie_id, p.ordre`
+    );
+    res.json(produits);
+  } catch (e) {
+    res.status(500).json({ erreur: "Erreur liste produits." });
+  }
+});
+
+// Petite aide : convertit "" ou undefined en NULL, sinon en nombre
+function prixOuNull(v) {
+  if (v === "" || v === null || v === undefined) return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
+// POST /api/admin/produits -> ajouter un produit
+router.post("/produits", async (req, res) => {
+  const b = req.body || {};
+  if (!b.categorie_id || !b.nom) {
+    return res.status(400).json({ erreur: "Catégorie et nom obligatoires." });
+  }
+  try {
+    const [r] = await pool.query(
+      `INSERT INTO produits
+         (categorie_id, nom, description, prix_seul, prix_menu, prix_classic, prix_maxi, allergenes, dispo, ordre)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        b.categorie_id,
+        b.nom,
+        b.description || null,
+        prixOuNull(b.prix_seul),
+        prixOuNull(b.prix_menu),
+        prixOuNull(b.prix_classic),
+        prixOuNull(b.prix_maxi),
+        b.allergenes || "",
+        b.dispo === 0 || b.dispo === false ? 0 : 1,
+        parseInt(b.ordre, 10) || 0,
+      ]
+    );
+    res.status(201).json({ ok: true, id: r.insertId });
+  } catch (e) {
+    console.error("Erreur ajout produit :", e.message);
+    res.status(500).json({ erreur: "Erreur ajout produit." });
+  }
+});
+
+// PUT /api/admin/produits/:id -> modifier un produit
+router.put("/produits/:id", async (req, res) => {
+  const b = req.body || {};
+  if (!b.categorie_id || !b.nom) {
+    return res.status(400).json({ erreur: "Catégorie et nom obligatoires." });
+  }
+  try {
+    await pool.query(
+      `UPDATE produits SET
+         categorie_id = ?, nom = ?, description = ?,
+         prix_seul = ?, prix_menu = ?, prix_classic = ?, prix_maxi = ?,
+         allergenes = ?, ordre = ?
+       WHERE id = ?`,
+      [
+        b.categorie_id,
+        b.nom,
+        b.description || null,
+        prixOuNull(b.prix_seul),
+        prixOuNull(b.prix_menu),
+        prixOuNull(b.prix_classic),
+        prixOuNull(b.prix_maxi),
+        b.allergenes || "",
+        parseInt(b.ordre, 10) || 0,
+        req.params.id,
+      ]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("Erreur modif produit :", e.message);
+    res.status(500).json({ erreur: "Erreur modification produit." });
+  }
+});
+
+// DELETE /api/admin/produits/:id -> supprimer un produit
+router.delete("/produits/:id", async (req, res) => {
+  try {
+    await pool.query("DELETE FROM produits WHERE id = ?", [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("Erreur suppression produit :", e.message);
+    res.status(500).json({ erreur: "Erreur suppression produit." });
+  }
+});
+
+// =============================================================
+//  INGRÉDIENTS CLÉS (un produit "meurt" si un de ses ingrédients
+//  clés est en rupture). Liaison produit <-> options_choix.
+// =============================================================
+
+// GET /api/admin/ingredients-cles -> { produit_id: [option_id, ...] }
+router.get("/ingredients-cles", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT produit_id, option_id FROM produit_ingredients"
+    );
+    const map = {};
+    rows.forEach((r) => {
+      if (!map[r.produit_id]) map[r.produit_id] = [];
+      map[r.produit_id].push(r.option_id);
+    });
+    res.json(map);
+  } catch (e) {
+    res.status(500).json({ erreur: "Erreur ingrédients clés." });
+  }
+});
+
+// PUT /api/admin/produits/:id/ingredients-cles  { option_ids: [..] }
+// Remplace l'ensemble des ingrédients clés d'un produit.
+router.put("/produits/:id/ingredients-cles", async (req, res) => {
+  const produitId = req.params.id;
+  const ids = Array.isArray(req.body.option_ids) ? req.body.option_ids : [];
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query("DELETE FROM produit_ingredients WHERE produit_id = ?", [produitId]);
+    for (const optId of ids) {
+      await conn.query(
+        "INSERT IGNORE INTO produit_ingredients (produit_id, option_id) VALUES (?, ?)",
+        [produitId, optId]
+      );
+    }
+    await conn.commit();
+    res.json({ ok: true });
+  } catch (e) {
+    await conn.rollback();
+    console.error("Erreur maj ingrédients clés :", e.message);
+    res.status(500).json({ erreur: "Erreur enregistrement ingrédients clés." });
+  } finally {
+    conn.release();
+  }
+});
+
 module.exports = router;

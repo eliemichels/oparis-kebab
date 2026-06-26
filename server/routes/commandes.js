@@ -70,6 +70,18 @@ router.post("/commandes", async (req, res) => {
       }
       const p = prow[0];
 
+      // Vérifie qu'aucun ingrédient CLÉ du produit n'est en rupture
+      const [clesRupture] = await conn.query(
+        `SELECT oc.nom
+           FROM produit_ingredients pi
+           JOIN options_choix oc ON oc.id = pi.option_id
+          WHERE pi.produit_id = ? AND oc.dispo <> 1`,
+        [it.produit_id]
+      );
+      if (clesRupture.length) {
+        throw new Error(`${p.nom} indisponible (rupture : ${clesRupture[0].nom}).`);
+      }
+
       // Compte les boissons (système menu)
       const nbBoissons = (it.options || []).filter(function (o) {
         return o.type === "boisson_menu";

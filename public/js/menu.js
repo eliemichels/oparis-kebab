@@ -9,6 +9,33 @@
   // --- État global ---
   var DATA = null;          // { categories, produits, options, regles }
   var PANIER = [];          // lignes ajoutées par le client
+
+  // --- Persistance du panier (localStorage, expire après 1h) ---
+  var PANIER_CLE = "opk_panier";
+  var PANIER_DUREE = 60 * 60 * 1000; // 1 heure en millisecondes
+
+  function sauverPanier() {
+    try {
+      var paquet = { ts: Date.now(), items: PANIER };
+      localStorage.setItem(PANIER_CLE, JSON.stringify(paquet));
+    } catch (e) { /* localStorage indispo (navigation privée) : on ignore */ }
+  }
+
+  function chargerPanier() {
+    try {
+      var brut = localStorage.getItem(PANIER_CLE);
+      if (!brut) return [];
+      var paquet = JSON.parse(brut);
+      // Expiré (plus d'1h) -> on jette
+      if (!paquet.ts || Date.now() - paquet.ts > PANIER_DUREE) {
+        localStorage.removeItem(PANIER_CLE);
+        return [];
+      }
+      return Array.isArray(paquet.items) ? paquet.items : [];
+    } catch (e) {
+      return [];
+    }
+  }
   var euros = function (n) { return (Math.round(n * 100) / 100).toFixed(2).replace(".", ",") + " €"; };
 
   // --- Éléments ---
@@ -26,6 +53,7 @@
         DATA = data;
         afficherCats();
         afficherProduits();
+        restaurerPanier();   // recharge le panier sauvegardé (après que DATA soit prêt)
       })
       .catch(function (e) {
         elContenu.innerHTML =
@@ -42,6 +70,21 @@
         }
       })
       .catch(function () {});
+  }
+
+  // Recharge le panier sauvegardé en ne gardant que les produits
+  // toujours présents et disponibles dans le menu actuel.
+  function restaurerPanier() {
+    var sauve = chargerPanier();
+    if (!sauve.length) return;
+    var dispoParId = {};
+    (DATA.produits || []).forEach(function (p) {
+      // disponible (calculé serveur) ou, à défaut, dispo en base
+      var ok = (p.disponible === undefined) ? (p.dispo !== 0) : (p.disponible !== false);
+      dispoParId[p.id] = ok;
+    });
+    PANIER = sauve.filter(function (ligne) { return dispoParId[ligne.produit_id]; });
+    majPanier();
   }
 
   // ---------------------------------------------------------
@@ -98,6 +141,11 @@
   function carteProduit(p) {
     var carte = document.createElement("article");
     carte.className = "prod";
+    carte.dataset.pid = p.id;
+
+    // Produit indisponible (rupture manuelle ou ingrédient clé manquant) ?
+    // disponible vient de l'API ; par sécurité on retombe sur dispo.
+    var indispo = (p.disponible === false) || (p.disponible === undefined && p.dispo === 0);
 
     // Le produit a-t-il des options à configurer ?
     var regles = DATA.regles.filter(function (r) { return r.produit_id === p.id; });
@@ -106,12 +154,20 @@
     var head = document.createElement("div");
     head.className = "prod__head";
     head.innerHTML =
-      '<div class="prod__info"><b>' + p.nom + "</b>" +
+      '<div class="prod__info"><b>' + p.nom +
+      (indispo ? ' <span class="prod-rupture">Rupture</span>' : "") + "</b>" +
       (p.description ? "<span>" + p.description + "</span>" : "") +
-      (aOptions ? '<span class="prod__toggle">Composer / commander ▾</span>' : "") +
+      (aOptions && !indispo ? '<span class="prod__toggle">Composer / commander ▾</span>' : "") +
       "</div>" +
       '<div class="prod__prix"><b>' + euros(prixBase(p)) + "</b>" +
-      (aOptions ? "<small>dès</small>" : "") + "</div>";
+      (aOptions && !indispo ? "<small>dès</small>" : "") + "</div>";
+
+    // --- Produit indisponible : grisé, pas de configurateur, pas d'ajout ---
+    if (indispo) {
+      carte.classList.add("prod--rupture");
+      carte.appendChild(head);
+      return carte;
+    }
 
     if (!aOptions) {
       // Produit simple (boisson, tiramisu…) : bouton Ajouter direct
@@ -133,7 +189,9 @@
 
     var config = document.createElement("div");
     config.className = "config";
-    config.appendChild(construireConfig(p));
+    var boxConfig = construireConfig(p);
+    config.appendChild(boxConfig);
+    carte._boxConfig = boxConfig;   // référence pour la modification depuis le panier
 
     head.addEventListener("click", function () {
       config.classList.toggle("ouvert");
@@ -205,8 +263,70 @@
     box._produit = p;
     box.appendChild(piedConfig(etat, p, box));
 
+    // Réinitialise complètement le configurateur (déselectionne tout)
+    box._reset = function () {
+      // options viande/sauce/supplement/pain
+      box.querySelectorAll(".opt.actif").forEach(function (o) { o.classList.remove("actif"); });
+      Object.keys(etat.options).forEach(function (t) { etat.options[t] = []; });
+      etat.retraits = [];
+      etat.qte = 1;
+      var val = box.querySelector(".config__qte .val");
+      if (val) val.textContent = "1";
+      // boissons
+      if (box._grpBoissonGrid) {
+        majBoissonUI(box._grpBoissonGrid, etat);
+      }
+      // re-présélection du pain obligatoire (1er choix) comme à la construction
+      box.querySelectorAll(".config__groupe").forEach(function (g) {
+        var r = g._regle;
+        if (r && r.type === "pain" && r.min_choix >= 1) {
+          var prem = g.querySelector(".opt");
+          if (prem) { prem.classList.add("actif"); var c = trouverOption(r.type, prem.dataset.optId); if (c) etat.options[r.type].push(c); }
+        }
+      });
+      majTotal(etat, p, box);
+    };
+
+    // Ré-applique une ligne de panier (pré-coche tous les choix sauvegardés)
+    box._appliquer = function (ligne) {
+      box._reset();
+      // options classiques (viande, sauce, supplement, pain) : on clique les boutons
+      (ligne.options || []).forEach(function (o) {
+        if (o.type === "boisson_menu") return; // traité à part
+        var btn = box.querySelector('.opt[data-opt-id="' + o.id + '"][data-opt-type="' + o.type + '"]');
+        if (btn && !btn.classList.contains("actif")) btn.click();
+      });
+      // boissons (peuvent être en plusieurs exemplaires)
+      (ligne.options || []).forEach(function (o) {
+        if (o.type !== "boisson_menu") return;
+        if (box._grpBoissonGrid) {
+          var cell = box._grpBoissonGrid.querySelector('.opt--boisson[data-nom="' + cssEchap(o.nom) + '"]');
+          if (cell) { var plus = cell.querySelector(".bm-plus"); if (plus) plus.click(); }
+        }
+      });
+      // retraits (sans tomate…)
+      (ligne.retraits || []).forEach(function (txt) {
+        var btn = box.querySelector('.opt[data-retrait="' + cssEchap(txt) + '"]');
+        if (btn && !btn.classList.contains("actif")) btn.click();
+      });
+      // quantité
+      etat.qte = Math.max(1, ligne.quantite || 1);
+      var val = box.querySelector(".config__qte .val");
+      if (val) val.textContent = etat.qte;
+      majTotal(etat, p, box);
+    };
+
     majTotal(etat, p, box);
     return box;
+  }
+
+  // Retrouve l'objet option (id/nom/prix) par type + id
+  function trouverOption(type, id) {
+    return DATA.options.find(function (o) { return o.type === type && String(o.id) === String(id); });
+  }
+  // Échappe les caractères spéciaux pour un sélecteur d'attribut
+  function cssEchap(s) {
+    return String(s).replace(/["\\]/g, "\\$&");
   }
 
   // Groupe TAILLE (Classic/Maxi) — pour assiettes & tacos
@@ -248,6 +368,15 @@
       var o = document.createElement("div");
       o.className = "opt opt--boisson";
       o.dataset.nom = c.nom;
+      var enRupture = (c.dispo === 0 || c.dispo === false);
+
+      if (enRupture) {
+        o.classList.add("opt--rupture");
+        o.innerHTML = '<span class="bm-nom">' + c.nom + '</span><span class="opt-rupture">rupture</span>';
+        grid.appendChild(o);
+        return;
+      }
+
       o.innerHTML =
         '<button type="button" class="bm-moins" aria-label="Retirer" style="display:none">−</button>' +
         '<span class="bm-nom">' + c.nom + "</span>" +
@@ -328,7 +457,21 @@
       var o = document.createElement("button");
       o.type = "button";
       o.className = "opt";
-      o.innerHTML = c.nom + (Number(c.prix) > 0 ? ' <span class="px">+' + euros(Number(c.prix)) + "</span>" : "");
+      o.dataset.optId = c.id;
+      o.dataset.optType = regle.type;
+      var enRupture = (c.dispo === 0 || c.dispo === false);
+      o.innerHTML = c.nom +
+        (Number(c.prix) > 0 ? ' <span class="px">+' + euros(Number(c.prix)) + "</span>" : "") +
+        (enRupture ? ' <span class="opt-rupture">rupture</span>' : "");
+
+      if (enRupture) {
+        // Option indisponible : grisée, non cliquable, jamais sélectionnée
+        o.classList.add("opt--rupture");
+        o.disabled = true;
+        grid.appendChild(o);
+        return;
+      }
+
       // Pré-sélection du pain (1er choix) si obligatoire
       if (regle.type === "pain" && i === 0 && regle.min_choix >= 1) {
         o.classList.add("actif"); etat.options[regle.type].push(c);
@@ -370,6 +513,7 @@
       var o = document.createElement("button");
       o.type = "button";
       o.className = "opt";
+      o.dataset.retrait = txt;
       o.textContent = txt;
       o.addEventListener("click", function () {
         var idx = etat.retraits.indexOf(txt);
@@ -554,6 +698,34 @@
     ouvrirTiroir();                         // montre le panier
   }
 
+  // Modifier un article : on le retire du panier, on rouvre son configurateur
+  // pré-rempli avec les choix sauvegardés. L'utilisateur valide à nouveau.
+  function modifierArticle(i) {
+    var ligne = PANIER[i];
+    if (!ligne) return;
+
+    // Retrouver la carte produit correspondante
+    var carte = document.querySelector('.prod[data-pid="' + ligne.produit_id + '"]');
+    if (!carte || !carte._boxConfig) {
+      // Produit introuvable (ex : devenu indisponible) : on laisse l'article tel quel
+      alert("Ce produit n'est plus disponible à la modification.");
+      return;
+    }
+
+    // On retire l'article du panier puis on rejoue les choix dans le configurateur
+    PANIER.splice(i, 1);
+    majPanier();
+
+    var box = carte._boxConfig;
+    box._appliquer(ligne);
+
+    // Ouvrir le configurateur et fermer le tiroir panier
+    var config = carte.querySelector(".config");
+    if (config) config.classList.add("ouvert");
+    fermerTiroir();
+    carte.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   function majPanier() {
     var items = document.getElementById("panierItems");
     var total = 0, compte = 0;
@@ -569,12 +741,20 @@
           '<div class="pitem__top"><b>' + ligne.quantite + "× " + ligne.nom +
           '</b><span class="pitem__prix">' + euros(ligne.prix) + "</span></div>" +
           (ligne.detail ? '<div class="pitem__detail">' + ligne.detail + "</div>" : "") +
-          '<button class="pitem__sup" data-i="' + i + '">Retirer</button>';
+          '<div class="pitem__actions">' +
+            '<button class="pitem__mod" data-i="' + i + '">Modifier</button>' +
+            '<button class="pitem__sup" data-i="' + i + '">Retirer</button>' +
+          '</div>';
         items.appendChild(d);
       });
       items.querySelectorAll(".pitem__sup").forEach(function (b) {
         b.addEventListener("click", function () {
           PANIER.splice(Number(b.dataset.i), 1); majPanier();
+        });
+      });
+      items.querySelectorAll(".pitem__mod").forEach(function (b) {
+        b.addEventListener("click", function () {
+          modifierArticle(Number(b.dataset.i));
         });
       });
     }
@@ -583,6 +763,8 @@
     var elArt = document.getElementById("panierArticles");
     if (elArt) elArt.textContent = compte + (compte > 1 ? " articles" : " article");
     document.getElementById("allerCommande").disabled = PANIER.length === 0;
+
+    sauverPanier();   // persiste le panier (survit au refresh, expire après 1h)
   }
 
   // Bouton "Vider le panier"

@@ -300,6 +300,28 @@ a { color: inherit; text-decoration: none; }
 .opt.actif { background:var(--orange); border-color:var(--orange); color:var(--noir); font-weight:700; }
 .opt .px { color:var(--gris-fonce); font-size:12px; }
 .opt.actif .px { color:var(--noir); }
+
+/* Option en rupture de stock : grisée, barrée, non cliquable */
+.opt--rupture {
+  opacity:.45; cursor:not-allowed; background:var(--os-2);
+  text-decoration:line-through; color:var(--gris-fonce); pointer-events:none;
+}
+.opt--rupture:hover { border-color:var(--os-2); }
+.opt-rupture {
+  text-decoration:none; font-size:10px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.5px; color:#fff; background:var(--braise);
+  padding:1px 6px; border-radius:100px; margin-left:2px;
+}
+
+/* Produit entièrement en rupture (ingrédient clé manquant) */
+.prod--rupture { opacity:.55; }
+.prod--rupture .prod__head { cursor:default; }
+.prod--rupture .prod__info b { color:var(--gris-fonce); }
+.prod-rupture {
+  font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.5px;
+  color:#fff; background:var(--braise); padding:2px 8px; border-radius:100px;
+  margin-left:6px; vertical-align:middle;
+}
 .config__retraits { display:flex; flex-wrap:wrap; gap:8px; }
 .config__foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; padding-top:14px; border-top:1px solid var(--os-2); }
 .config__qte { display:flex; align-items:center; gap:10px; }
@@ -329,7 +351,10 @@ a { color: inherit; text-decoration: none; }
 .pitem__top b { font-family:var(--display); font-size:17px; letter-spacing:.3px; }
 .pitem__prix { color:var(--braise); font-weight:800; white-space:nowrap; }
 .pitem__detail { font-size:12px; color:var(--gris-fonce); margin-top:3px; line-height:1.45; }
-.pitem__sup { background:none;border:0;color:var(--braise);font-size:12px;cursor:pointer;margin-top:6px;text-decoration:underline; }
+.pitem__actions { display:flex; gap:14px; margin-top:6px; align-items:center; }
+.pitem__sup { background:none;border:0;color:var(--braise);font-size:12px;cursor:pointer;text-decoration:underline; }
+.pitem__mod { background:none;border:0;color:var(--gris-fonce);font-size:12px;cursor:pointer;text-decoration:underline;font-weight:600; }
+.pitem__mod:hover { color:#1a191c; }
 .drawer__foot { padding:18px 20px; border-top:1px solid var(--os-2); }
 .drawer__total { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; }
 .drawer__total span { font-weight:700; }

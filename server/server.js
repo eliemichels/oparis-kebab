@@ -7,7 +7,7 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
-const db = require("./db"); // On importe la base de données pour associer les images aux produits
+const db = require("./db"); // Importation de db.js (MariaDB)
 
 const app = express();
 const PORT = process.env.PORT || 16400;
@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
     cb(null, UPLOADS_DIR);
   },
   filename: function (req, file, cb) {
-    // On nomme le fichier de manière unique d'après l'ID du produit (ex: produit-12.jpg)
+    // On nomme le fichier d'après l'ID du produit (ex: produit-12.jpg)
     const produitId = req.params.id;
     const extension = path.extname(file.originalname).toLowerCase();
     cb(null, `produit-${produitId}${extension}`);
@@ -55,7 +55,6 @@ const upload = multer({
 });
 
 // --- EN-TÊTE DE VÉRIFICATION DU CODE ADMIN ---
-// Remplacer "TON_CODE_SECRET" par ton vrai code si tu n'utilises pas de variable d'environnement
 function verifierCodeAdmin(req, res, next) {
   const codeRecu = req.headers['x-code-admin'];
   const CODE_CORRECT = process.env.ADMIN_CODE || "TON_CODE_SECRET";
@@ -67,7 +66,7 @@ function verifierCodeAdmin(req, res, next) {
 }
 
 // =============================================================
-//  ROUTES DE GESTION DES IMAGES (ADMIN)
+//  ROUTES DE GESTION DES IMAGES (ADMIN) — MARIADB COMPATIBLE
 // =============================================================
 
 /**
@@ -81,11 +80,11 @@ app.post('/api/admin/produits/:id/image', verifierCodeAdmin, upload.single('imag
     return res.status(400).json({ erreur: "Aucun fichier image reçu." });
   }
 
-  // Chemin relatif que le client va utiliser pour afficher l'image
+  // Chemin relatif utilisé par le client pour charger l'image
   const urlImage = `/uploads/${req.file.filename}`;
-
   const sql = `UPDATE produits SET image = ? WHERE id = ?`;
-  db.run(sql, [urlImage, produitId], function(err) {
+  
+  db.query(sql, [urlImage, produitId], (err, result) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ erreur: "Erreur lors de la mise à jour de l'image en base de données." });
@@ -100,11 +99,17 @@ app.post('/api/admin/produits/:id/image', verifierCodeAdmin, upload.single('imag
  */
 app.delete('/api/admin/produits/:id/image', verifierCodeAdmin, (req, res) => {
   const produitId = req.params.id;
-
   const sqlSelect = `SELECT image FROM produits WHERE id = ?`;
-  db.get(sqlSelect, [produitId], (err, produit) => {
+  
+  db.query(sqlSelect, [produitId], (err, results) => {
     if (err) return res.status(500).json({ erreur: "Erreur lors de la recherche du produit." });
-    if (!produit) return res.status(404).json({ erreur: "Produit introuvable." });
+    
+    // MariaDB retourne les résultats sous forme de tableau
+    if (!results || results.length === 0) {
+      return res.status(404).json({ erreur: "Produit introuvable." });
+    }
+
+    const produit = results[0];
 
     if (produit.image) {
       const nomFichier = path.basename(produit.image);
@@ -116,7 +121,7 @@ app.delete('/api/admin/produits/:id/image', verifierCodeAdmin, (req, res) => {
     }
 
     const sqlUpdate = `UPDATE produits SET image = NULL WHERE id = ?`;
-    db.run(sqlUpdate, [produitId], function(errUpdate) {
+    db.query(sqlUpdate, [produitId], (errUpdate) => {
       if (errUpdate) return res.status(500).json({ erreur: "Erreur lors du nettoyage de la base de données." });
       res.json({ succes: true, message: "Image supprimée." });
     });

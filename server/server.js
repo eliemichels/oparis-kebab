@@ -126,9 +126,6 @@ app.delete('/api/admin/produits/:id/image', verifierCodeAdmin, async (req, res) 
     console.error(err);
     res.status(500).json({ erreur: "Erreur lors du traitement de la suppression d'image." });
   }
-    });
-  });
-});
 
 // =============================================================
 

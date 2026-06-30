@@ -48,7 +48,7 @@ const fileFilter = (req, file, cb) => {
   cb(new Error("Le fichier doit être une image valide (JPG, PNG ou WebP)."));
 };
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 } // Limite à 5 Mo max
@@ -80,6 +80,7 @@ app.post('/api/admin/produits/:id/image', verifierCodeAdmin, upload.single('imag
     return res.status(400).json({ erreur: "Aucun fichier image reçu." });
   }
 
+  // Chemin relatif utilisé par le client pour charger l'image
   const urlImage = `/uploads/${req.file.filename}`;
   const sql = `UPDATE produits SET image = ? WHERE id = ?`;
 
@@ -126,6 +127,7 @@ app.delete('/api/admin/produits/:id/image', verifierCodeAdmin, async (req, res) 
     console.error(err);
     res.status(500).json({ erreur: "Erreur lors du traitement de la suppression d'image." });
   }
+});
 
 // =============================================================
 
@@ -150,6 +152,6 @@ app.use((err, req, res, next) => {
   next();
 });
 
-app.listen(16400, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🥙 O Paris Kebab en ligne : http://localhost:${PORT}`);
 });

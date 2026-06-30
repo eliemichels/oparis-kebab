@@ -73,38 +73,36 @@ function verifierCodeAdmin(req, res, next) {
  * Ajout ou mise à jour de l'image d'un produit
  * POST /api/admin/produits/:id/image
  */
-app.post('/api/admin/produits/:id/image', verifierCodeAdmin, upload.single('image'), (req, res) => {
+app.post('/api/admin/produits/:id/image', verifierCodeAdmin, upload.single('image'), async (req, res) => {
   const produitId = req.params.id;
 
   if (!req.file) {
     return res.status(400).json({ erreur: "Aucun fichier image reçu." });
   }
 
-  // Chemin relatif utilisé par le client pour charger l'image
   const urlImage = `/uploads/${req.file.filename}`;
   const sql = `UPDATE produits SET image = ? WHERE id = ?`;
-  
-  db.query(sql, [urlImage, produitId], (err, result) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ erreur: "Erreur lors de la mise à jour de l'image en base de données." });
-    }
+
+  try {
+    await db.query(sql, [urlImage, produitId]);
     res.json({ succes: true, chemin: urlImage });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erreur: "Erreur lors de la mise à jour de l'image en base de données." });
+  }
 });
 
 /**
  * Suppression physique et logique de l'image d'un produit
  * DELETE /api/admin/produits/:id/image
  */
-app.delete('/api/admin/produits/:id/image', verifierCodeAdmin, (req, res) => {
+app.delete('/api/admin/produits/:id/image', verifierCodeAdmin, async (req, res) => {
   const produitId = req.params.id;
   const sqlSelect = `SELECT image FROM produits WHERE id = ?`;
-  
-  db.query(sqlSelect, [produitId], (err, results) => {
-    if (err) return res.status(500).json({ erreur: "Erreur lors de la recherche du produit." });
-    
-    // MariaDB retourne les résultats sous forme de tableau
+
+  try {
+    const [results] = await db.query(sqlSelect, [produitId]);
+
     if (!results || results.length === 0) {
       return res.status(404).json({ erreur: "Produit introuvable." });
     }
@@ -121,9 +119,13 @@ app.delete('/api/admin/produits/:id/image', verifierCodeAdmin, (req, res) => {
     }
 
     const sqlUpdate = `UPDATE produits SET image = NULL WHERE id = ?`;
-    db.query(sqlUpdate, [produitId], (errUpdate) => {
-      if (errUpdate) return res.status(500).json({ erreur: "Erreur lors du nettoyage de la base de données." });
-      res.json({ succes: true, message: "Image supprimée." });
+    await db.query(sqlUpdate, [produitId]);
+    res.json({ succes: true, message: "Image supprimée." });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erreur: "Erreur lors du traitement de la suppression d'image." });
+  }
     });
   });
 });

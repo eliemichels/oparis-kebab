@@ -7,7 +7,7 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
-const db = require("./database"); // On importe la base de données pour associer les images aux produits
+const db = require("./db"); // On importe la base de données pour associer les images aux produits
 
 const app = express();
 const PORT = process.env.PORT || 16400;

@@ -9,6 +9,55 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* Ajustements CSS intégrés pour l'affichage moderne des images du menu */
+    .menu-item {
+      display: flex;
+      gap: 16px;
+      background: #fff;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      margin-bottom: 16px;
+      align-items: center;
+    }
+    .menu-item__img-container {
+      width: 90px;
+      height: 90px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #f3ece1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid #e0d8cc;
+    }
+    .menu-item__img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .menu-item__img-fallback {
+      font-size: 32px;
+    }
+    .menu-item__content {
+      flex: 1;
+    }
+    @media (max-width: 480px) {
+      .menu-item {
+        gap: 12px;
+        padding: 12px;
+      }
+      .menu-item__img-container {
+        width: 75px;
+        height: 75px;
+      }
+      .menu-item__img-fallback {
+        font-size: 26px;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -129,5 +178,44 @@
 
   <script src="js/main.js"></script>
   <script src="js/menu.js"></script>
+
+  <!-- Script d'interception pour injecter les images dynamiques dans l'affichage -->
+  <script>
+    (function() {
+      // On écoute le chargement complet des produits pour insérer les images dans la structure
+      const originalFetch = window.fetch;
+      window.fetch = async function(...args) {
+        const response = await originalFetch(...args);
+        if (args[0] && args[0].includes('/api/produits') && response.ok) {
+          // On laisse le script d'origine faire son travail, puis on ajuste l'HTML injecté pour y ajouter les balises images
+          setTimeout(() => {
+            document.querySelectorAll('.menu-item, .product-card, .carte-produit').forEach(item => {
+              // Si l'image est déjà présente, on ne fait rien
+              if (item.querySelector('.menu-item__img-container')) return;
+
+              // On essaye de récupérer l'ID ou les données du produit à l'aide des attributs ou boutons présents
+              const btn = item.querySelector('button[data-id]');
+              if (!btn) return;
+              
+              const pId = btn.getAttribute('data-id');
+              // On cherche l'image associée dans la liste globale si elle existe
+              if (window.produits && Array.isArray(window.produits)) {
+                const pData = window.produits.find(p => String(p.id) === String(pId));
+                if (pData) {
+                  const imgHtml = pData.image 
+                    ? `<div class="menu-item__img-container"><img class="menu-item__img" src="${pData.image}" alt="${pData.nom}"></div>`
+                    : `<div class="menu-item__img-container"><span class="menu-item__img-fallback">🥙</span></div>`;
+                  
+                  // Insertion de l'image au tout début de la carte du produit
+                  item.insertAdjacentHTML('afterbegin', imgHtml);
+                }
+              }
+            });
+          }, 150);
+        }
+        return response;
+      };
+    })();
+  </script>
 </body>
 </html>

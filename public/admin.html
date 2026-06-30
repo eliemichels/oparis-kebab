@@ -399,6 +399,22 @@
       <label>Description</label>
       <input type="text" id="pDesc" placeholder="ex : Galette, salade, frites…" />
     </div>
+
+    <!-- ====== INSERE LE BLOC IMAGE EXACTEMENT ICI ====== -->
+    <div class="champ" id="groupe-image" style="margin-top: 14px; margin-bottom: 14px;">
+      <label>Image du produit</label>
+
+      <div id="apercu-image-wrapper" style="display:none; margin-bottom:8px;">
+        <img id="apercu-image" src="" alt="Image actuelle" style="max-width:100%; max-height:150px; border-radius:8px; border:1px solid #e0d8cc; object-fit: contain;">
+        <br>
+        <button type="button" id="btn-supprimer-image" class="btn btn--danger btn--sm" style="margin-top:6px;">🗑 Supprimer l'image</button>
+      </div>
+
+      <input type="file" id="input-image-produit" accept="image/*" style="margin-top:4px; background: #fff;">
+      <small style="color:var(--gris); font-size: 11px;">JPG, PNG, WebP — 5 Mo max</small>
+    </div>
+    <!-- ================================================== -->
+  
     <p style="font-size:12px;color:var(--gris);margin-bottom:10px">
       Remplissez seulement les prix qui s'appliquent (laissez vide les autres).
     </p>

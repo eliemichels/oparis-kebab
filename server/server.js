@@ -15,121 +15,14 @@ const PORT = process.env.PORT || 16400;
 // Lecture du JSON envoyé par le front
 app.use(express.json());
 
-// --- CONFIGURATION DE LA GESTION DES IMAGES PRODUITS ---
-
-// 1. Création automatique du dossier "uploads" s'il n'existe pas
-const UPLOADS_DIR = path.join(__dirname, "..", "public", "uploads");
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
-
-// 2. Configuration de Multer pour stocker et nommer proprement les images
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, UPLOADS_DIR);
-  },
-  filename: function (req, file, cb) {
-    // On nomme le fichier d'après l'ID du produit (ex: produit-12.jpg)
-    const produitId = req.params.id;
-    const extension = path.extname(file.originalname).toLowerCase();
-    cb(null, `produit-${produitId}${extension}`);
-  }
-});
-
-// Filtre de sécurité sur les formats d'images autorisés
-const fileFilter = (req, file, cb) => {
-  const typesAutorises = /jpeg|jpg|png|webp/;
-  const mimeType = typesAutorises.test(file.mimetype);
-  const extName = typesAutorises.test(path.extname(file.originalname).toLowerCase());
-
-  if (mimeType && extName) {
-    return cb(null, true);
-  }
-  cb(new Error("Le fichier doit être une image valide (JPG, PNG ou WebP)."));
-};
-
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 } // Limite à 5 Mo max
-});
-
-// --- EN-TÊTE DE VÉRIFICATION DU CODE ADMIN ---
-function verifierCodeAdmin(req, res, next) {
-  const codeRecu = req.headers['x-code-admin'];
-  const CODE_CORRECT = process.env.ADMIN_CODE || "kebab2026";
-  if (codeRecu === CODE_CORRECT) {
-    next();
-  } else {
-    res.status(401).json({ erreur: "Accès refusé. Code incorrect." });
-  }
-}
-
-// =============================================================
-//  ROUTES DE GESTION DES IMAGES (ADMIN) — MARIADB COMPATIBLE
-// =============================================================
-
-/**
- * Ajout ou mise à jour de l'image d'un produit
- * POST /api/admin/produits/:id/image
- */
-app.post('/api/admin/produits/:id/image', verifierCodeAdmin, upload.single('image'), async (req, res) => {
-  const produitId = req.params.id;
-
-  if (!req.file) {
-    return res.status(400).json({ erreur: "Aucun fichier image reçu." });
-  }
-
-  // Chemin relatif utilisé par le client pour charger l'image
-  const urlImage = `/uploads/${req.file.filename}`;
-  const sql = `UPDATE produits SET image = ? WHERE id = ?`;
-
-  try {
-    await db.query(sql, [urlImage, produitId]);
-    res.json({ succes: true, chemin: urlImage });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ erreur: "Erreur lors de la mise à jour de l'image en base de données." });
-  }
-});
-
-/**
- * Suppression physique et logique de l'image d'un produit
- * DELETE /api/admin/produits/:id/image
- */
-app.delete('/api/admin/produits/:id/image', verifierCodeAdmin, async (req, res) => {
-  const produitId = req.params.id;
-  const sqlSelect = `SELECT image FROM produits WHERE id = ?`;
-
-  try {
-    const [results] = await db.query(sqlSelect, [produitId]);
-
-    if (!results || results.length === 0) {
-      return res.status(404).json({ erreur: "Produit introuvable." });
-    }
-
-    const produit = results[0];
-
-    if (produit.image) {
-      const nomFichier = path.basename(produit.image);
-      const cheminPhysique = path.join(UPLOADS_DIR, nomFichier);
-
-      fs.unlink(cheminPhysique, (errUnlink) => {
-        if (errUnlink) console.warn("Fichier physique introuvable sur le disque, suppression ignorée.");
-      });
-    }
-
-    const sqlUpdate = `UPDATE produits SET image = NULL WHERE id = ?`;
-    await db.query(sqlUpdate, [produitId]);
-    res.json({ succes: true, message: "Image supprimée." });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ erreur: "Erreur lors du traitement de la suppression d'image." });
-  }
-});
-
-// =============================================================
+// NOTE : la gestion des images produits (Multer, dossier d'upload,
+// vérification du code admin) est centralisée dans routes/admin.js.
+// Les routes d'upload/suppression d'image produit
+// (POST et DELETE /api/admin/produits/:id/image) sont gérées
+// dans routes/admin.js, avec la bonne vérification du code admin
+// (celle stockée en base, la même que pour la connexion à l'admin).
+// Elles ne doivent PAS être redéfinies ici, sinon elles entrent
+// en conflit et court-circuitent silencieusement celles d'admin.js.
 
 // Fichiers statiques (HTML/CSS/JS du site) servis depuis ../public
 app.use(express.static(path.join(__dirname, "..", "public")));

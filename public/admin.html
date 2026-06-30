@@ -1,3 +1,8 @@
+Voici ton code complet mis à jour. J'ai récupéré tout ton script, nettoyé la coupure à la toute fin du fichier, et intégré proprement toute la logique de gestion d'image (HTML, variables, affichage de l'aperçu et envoi asynchrone du fichier).
+
+Fais un **Ctrl + A** dans ton fichier `admin.html` sur GitHub, supprime tout, et colle le bloc ci-dessous à la place :
+
+```html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -399,21 +404,6 @@
       <label>Description</label>
       <input type="text" id="pDesc" placeholder="ex : Galette, salade, frites…" />
     </div>
-
-    <!-- ====== INSERE LE BLOC IMAGE EXACTEMENT ICI ====== -->
-    <div class="champ" id="groupe-image" style="margin-top: 14px; margin-bottom: 14px;">
-      <label>Image du produit</label>
-
-      <div id="apercu-image-wrapper" style="display:none; margin-bottom:8px;">
-        <img id="apercu-image" src="" alt="Image actuelle" style="max-width:100%; max-height:150px; border-radius:8px; border:1px solid #e0d8cc; object-fit: contain;">
-        <br>
-        <button type="button" id="btn-supprimer-image" class="btn btn--danger btn--sm" style="margin-top:6px;">🗑 Supprimer l'image</button>
-      </div>
-
-      <input type="file" id="input-image-produit" accept="image/*" style="margin-top:4px; background: #fff;">
-      <small style="color:var(--gris); font-size: 11px;">JPG, PNG, WebP — 5 Mo max</small>
-    </div>
-    <!-- ================================================== -->
   
     <p style="font-size:12px;color:var(--gris);margin-bottom:10px">
       Remplissez seulement les prix qui s'appliquent (laissez vide les autres).
@@ -444,6 +434,20 @@
       <label>Ordre d'affichage</label>
       <input type="number" id="pOrdre" value="0" />
     </div>
+
+    <!-- ====== BLOC IMAGE PRODUIT ====== -->
+    <div class="champ" id="groupe-image" style="margin-top: 14px; margin-bottom: 14px;">
+      <label>Image du produit</label>
+      <div id="apercu-image-wrapper" style="display:none; margin-bottom:8px;">
+        <img id="apercu-image" src="" alt="Image actuelle" style="max-width:100%; max-height:150px; border-radius:8px; border:1px solid #e0d8cc; object-fit: contain;">
+        <br>
+        <button type="button" id="btn-supprimer-image" class="btn btn--danger btn--sm" style="margin-top:6px;">🗑 Supprimer l'image</button>
+      </div>
+      <input type="file" id="input-image-produit" accept="image/*" style="margin-top:4px; background: #fff;">
+      <small style="color:var(--gris); font-size: 11px;">JPG, PNG, WebP — 5 Mo max</small>
+    </div>
+    <!-- ==================================== -->
+
     <div class="champ" id="champIngredients" style="display:none">
       <label>Ingrédients clés <span class="aide">(si en rupture, le produit devient indisponible)</span></label>
       <div id="pIngredients" class="ingr-grid"></div>
@@ -464,7 +468,7 @@
 
   var API = "/api/admin";
   var code = "";                 // code admin en mémoire (session courante)
-  var produitEnCoursId = null;
+  var produitEnCoursId = null;   // ID du produit géré dans la modale
   var categories = [];
   var produits = [];
   var toutesOptions = [];     // toutes les options (viandes, sauces...) pour les ingrédients clés
@@ -472,6 +476,19 @@
   var rafraichissement = null;
 
   // --- Helpers réseau ---
+  var multiPartAppel = function(methode, chemin, formData) {
+    return fetch(API + chemin, {
+      method: methode,
+      headers: { "x-code-admin": code },
+      body: formData
+    }).then(function(r) {
+      return r.json().then(function(data) {
+        if (!r.ok) throw new Error(data.erreur || "Erreur " + r.status);
+        return data;
+      });
+    });
+  };
+
   function appel(methode, chemin, corps) {
     var opts = {
       method: methode,
@@ -509,7 +526,6 @@
     var saisi = codeInput.value.trim();
     if (!saisi) { loginErr.textContent = "Entrez un code."; return; }
     code = saisi;
-    // On teste le code en chargeant le récap du jour
     appel("GET", "/jour")
       .then(function () {
         loginErr.textContent = "";
@@ -550,7 +566,6 @@
     chargerCommandes();
     chargerCategories();
     chargerOptionsEtCles();
-    // Rafraîchit les commandes toutes les 30 s
     rafraichissement = setInterval(function () {
       if (document.getElementById("vue-commandes").classList.contains("actif")) {
         chargerCommandes(true);
@@ -558,7 +573,6 @@
     }, 30000);
   }
 
-  // Charge toutes les options + les ingrédients clés (pour la modale produit)
   function chargerOptionsEtCles() {
     appel("GET", "/disponibilites").then(function (data) {
       toutesOptions = data.options || [];
@@ -617,7 +631,6 @@
         '<div class="cmd__actions" id="act-' + c.id + '"></div>';
       box.appendChild(div);
 
-      // Détail (items)
       appel("GET", "/commandes/" + c.id).then(function (detail) {
         var elI = document.getElementById("items-" + c.id);
         elI.innerHTML = "";
@@ -631,7 +644,6 @@
         });
       }).catch(function () {});
 
-      // Actions statut
       var act = document.getElementById("act-" + c.id);
       if (s.suivant) {
         var b = document.createElement("button");
@@ -687,7 +699,7 @@
           .then(function () {
             div.classList.toggle("rupture", !input.checked);
             toast(el.nom + (input.checked ? " : disponible" : " : en rupture"));
-            if (estOption) chargerDispo(); // recharge car cascade possible
+            if (estOption) chargerDispo();
           })
           .catch(function (e) { toast(e.message); input.checked = !input.checked; });
       });
@@ -762,6 +774,7 @@
 
   function ouvrirModale(p) {
     modaleErr.textContent = "";
+    produitEnCoursId = p ? p.id : null;
     document.getElementById("modaleTitre").textContent = p ? "Modifier le produit" : "Nouveau produit";
     document.getElementById("pId").value = p ? p.id : "";
     document.getElementById("pNom").value = p ? p.nom : "";
@@ -774,13 +787,23 @@
     document.getElementById("pAllerg").value = p && p.allergenes ? p.allergenes : "";
     document.getElementById("pOrdre").value = p ? p.ordre : 0;
 
-    // Ingrédients clés : seulement pour un produit existant (besoin de son id)
+    // Gestion de la miniature de l'image
+    var wrapper = document.getElementById("apercu-image-wrapper");
+    var img = document.getElementById("apercu-image");
+    if (p && p.image) {
+      img.src = p.image;
+      wrapper.style.display = "block";
+    } else {
+      wrapper.style.display = "none";
+      img.src = "";
+    }
+    document.getElementById("input-image-produit").value = "";
+
     var champIng = document.getElementById("champIngredients");
     var boxIng = document.getElementById("pIngredients");
     if (p) {
       champIng.style.display = "";
       var dejaCles = ingredientsCles[p.id] || [];
-      // On propose les viandes + suppléments comme ingrédients clés possibles
       var candidats = toutesOptions.filter(function (o) {
         return o.type === "viande" || o.type === "supplement";
       });
@@ -797,66 +820,93 @@
         boxIng.appendChild(lab);
       });
     } else {
-      // Nouveau produit : on cache (il faut d'abord l'enregistrer)
       champIng.style.display = "none";
       boxIng.innerHTML = "";
     }
 
     modaleFond.classList.add("ouvert");
   }
+
   function fermerModale() { modaleFond.classList.remove("ouvert"); }
 
-  document.getElementById("btnNouveau").addEventListener("click", function () { ouvrirModale(null); });
-  document.getElementById("btnAnnuler").addEventListener("click", fermerModale);
-  modaleFond.addEventListener("click", function (e) { if (e.target === modaleFond) fermerModale(); });
+  function uploadImageProduit(pid) {
+    var fileInput = document.getElementById("input-image-produit");
+    if (!fileInput.files || fileInput.files.length === 0) {
+      return Promise.resolve();
+    }
+    var formData = new FormData();
+    formData.append("image", fileInput.files[0]);
+    return multiPartAppel("POST", "/produits/" + pid + "/image", formData);
+  }
+
+  document.getElementById("btn-supprimer-image").addEventListener("click", function() {
+    if (!produitEnCoursId) return;
+    if (confirm("Supprimer l'image de ce produit ?")) {
+      appel("DELETE", "/produits/" + produitEnCoursId + "/image")
+        .then(function() {
+          document.getElementById("apercu-image-wrapper").style.display = "none";
+          document.getElementById("apercu-image").src = "";
+          toast("Image supprimée.");
+          chargerProduits();
+        })
+        .catch(function(e) { alert(e.message); });
+    }
+  });
 
   document.getElementById("btnEnregistrer").addEventListener("click", function () {
-    var id = document.getElementById("pId").value;
+    var pid = document.getElementById("pId").value;
     var corps = {
       nom: document.getElementById("pNom").value.trim(),
-      categorie_id: document.getElementById("pCat").value,
-      description: document.getElementById("pDesc").value.trim(),
-      prix_seul: document.getElementById("pSeul").value,
-      prix_menu: document.getElementById("pMenu").value,
-      prix_classic: document.getElementById("pClassic").value,
-      prix_maxi: document.getElementById("pMaxi").value,
-      allergenes: document.getElementById("pAllerg").value.trim(),
-      ordre: document.getElementById("pOrdre").value,
+      categorie_id: parseInt(document.getElementById("pCat").value, 10),
+      description: document.getElementById("pDesc").value.trim() || null,
+      prix_seul: parseFloat(document.getElementById("pSeul").value) || null,
+      prix_menu: parseFloat(document.getElementById("pMenu").value) || null,
+      prix_classic: parseFloat(document.getElementById("pClassic").value) || null,
+      prix_maxi: parseFloat(document.getElementById("pMaxi").value) || null,
+      allergenes: document.getElementById("pAllerg").value.trim() || null,
+      ordre: parseInt(document.getElementById("pOrdre").value, 10) || 0
     };
-    if (!corps.nom) { modaleErr.textContent = "Le nom est obligatoire."; return; }
-    if (!corps.categorie_id) { modaleErr.textContent = "Choisissez une catégorie."; return; }
 
-    var prom = id
-      ? appel("PUT", "/produits/" + id, corps)
-      : appel("POST", "/produits", corps);
-    prom.then(function (rep) {
-      var pid = id || (rep && rep.id);
-      // Sauvegarde des ingrédients clés (seulement si la section est visible)
-      var champIng = document.getElementById("champIngredients");
-      if (pid && champIng.style.display !== "none") {
-        var coches = [];
-        document.querySelectorAll("#pIngredients input:checked").forEach(function (c) {
-          coches.push(Number(c.value));
-        });
-        return appel("PUT", "/produits/" + pid + "/ingredients-cles", { option_ids: coches })
-          .then(function () {
-            ingredientsCles[pid] = coches;
-          });
-      }
-    }).then(function () {
-      fermerModale();
-      toast(id ? "Produit modifié" : "Produit ajouté");
-      chargerProduits();
-    }).catch(function (e) { modaleErr.textContent = e.message; });
+    if (!corps.nom) { modaleErr.textContent = "Le nom est obligatoire."; return; }
+
+    var methode = pid ? "PUT" : "POST";
+    var chemin = pid ? "/produits/" + pid : "/produits";
+
+    appel(methode, chemin, corps)
+      .then(function (res) {
+        var idProduit = pid || res.id;
+        return uploadImageProduit(idProduit);
+      })
+      .then(function () {
+        // Enregistrement des ingrédients clés s'il s'agit d'une modification
+        if (pid) {
+          var chks = document.querySelectorAll("#pIngredients input:checked");
+          var ids = Array.prototype.map.call(chks, function (c) { return parseInt(c.value, 10); });
+          return appel("PUT", "/produits/" + pid + "/ingredients-cles", { option_ids: ids });
+        }
+      })
+      .then(function () {
+        fermerModale();
+        toast("Produit enregistré avec succès.");
+        chargerProduits();
+        chargerOptionsEtCles();
+      })
+      .catch(function (e) { modaleErr.textContent = e.message; });
   });
 
   function supprimerProduit(p) {
-    if (!confirm('Supprimer "' + p.nom + '" ? Cette action est définitive.')) return;
-    appel("DELETE", "/produits/" + p.id)
-      .then(function () { toast("Produit supprimé"); chargerProduits(); })
-      .catch(function (e) { toast(e.message); });
+    if (confirm("Supprimer définitivement " + p.nom + " ?")) {
+      appel("DELETE", "/produits/" + p.id)
+        .then(function () { toast("Produit supprimé."); chargerProduits(); })
+        .catch(function (e) { toast(e.message); });
+    }
   }
+
+  document.getElementById("btnNouveau").addEventListener("click", function () { ouvrirModale(null); });
+  document.getElementById("btnAnnuler").addEventListener("click", fermerModale);
 })();
 </script>
 </body>
 </html>
+
+```

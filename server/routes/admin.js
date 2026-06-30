@@ -340,5 +340,73 @@ router.put("/produits/:id/ingredients-cles", async (req, res) => {
     conn.release();
   }
 });
+// =============================================================
+//  CONFIGURATION MULTER & GESTION DES IMAGES PRODUITS
+// =============================================================
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
+// Dossier où seront stockées les images (public/uploads/produits)
+const uploadsDir = path.join(__dirname, '../../public/uploads/produits');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `produit-${req.params.id}-${Date.now()}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 Mo max
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Fichier image requis'));
+    }
+    cb(null, true);
+  }
+});
+
+// POST /api/admin/produits/:id/image -> Route upload image produit
+router.post('/produits/:id/image', upload.single('image'), async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!req.file) return res.status(400).json({ erreur: 'Aucun fichier reçu' });
+
+  const imagePath = `/uploads/produits/${req.file.filename}`;
+
+  try {
+    await pool.query('UPDATE produits SET image = ? WHERE id = ?', [imagePath, id]);
+    res.json({ success: true, image: imagePath });
+  } catch (err) {
+    res.status(500).json({ erreur: err.message });
+  }
+});
+
+// DELETE /api/admin/produits/:id/image -> Route DELETE image produit
+router.delete('/produits/:id/image', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const [rows] = await pool.query('SELECT image FROM produits WHERE id = ?', [id]);
+    if (!rows.length) return res.status(404).json({ erreur: 'Produit introuvable' });
+    
+    const oldPath = rows[0].image;
+    await pool.query('UPDATE produits SET image = NULL WHERE id = ?', [id]);
+    
+    // Supprimer le fichier physique s'il existe
+    if (oldPath) {
+      const fullPath = path.join(__dirname, '../../public', oldPath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ erreur: err.message });
+  }
+});
 module.exports = router;

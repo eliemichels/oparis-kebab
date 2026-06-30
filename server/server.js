@@ -57,7 +57,7 @@ const upload = multer({
 // --- EN-TÊTE DE VÉRIFICATION DU CODE ADMIN ---
 function verifierCodeAdmin(req, res, next) {
   const codeRecu = req.headers['x-code-admin'];
-  const CODE_CORRECT = process.env.ADMIN_CODE || "TON_CODE_SECRET";
+  const CODE_CORRECT = process.env.ADMIN_CODE || "kebab2026";
   if (codeRecu === CODE_CORRECT) {
     next();
   } else {

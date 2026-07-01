@@ -142,7 +142,14 @@
     var carte = document.createElement("article");
     carte.className = "prod";
     carte.dataset.pid = p.id;
-
+     if (p.image) {
+      var img = document.createElement("img");
+      img.className = "prod__img";
+      img.src = p.image;
+      img.alt = p.nom;
+      img.loading = "lazy";
+      carte.appendChild(img);
+    }
     // Produit indisponible (rupture manuelle ou ingrédient clé manquant) ?
     // disponible vient de l'API ; par sécurité on retombe sur dispo.
     var indispo = (p.disponible === false) || (p.disponible === undefined && p.dispo === 0);

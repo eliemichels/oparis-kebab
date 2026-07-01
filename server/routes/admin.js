@@ -200,7 +200,7 @@ router.get("/produits", async (req, res) => {
     const [produits] = await pool.query(
       `SELECT p.id, p.categorie_id, c.nom AS categorie_nom, p.nom, p.description,
               p.prix_seul, p.prix_menu, p.prix_classic, p.prix_maxi,
-              p.allergenes, p.dispo, p.ordre
+              p.allergenes, p.dispo, p.ordre, p.image
          FROM produits p
          JOIN categories c ON c.id = p.categorie_id
         ORDER BY p.categorie_id, p.ordre`

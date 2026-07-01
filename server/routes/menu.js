@@ -12,7 +12,7 @@ router.get("/menu", async (req, res) => {
     // On renvoie TOUS les produits avec leur dispo (le front grise les morts)
     const [produits] = await pool.query(
       `SELECT id, categorie_id, nom, description,
-              prix_seul, prix_menu, prix_classic, prix_maxi, allergenes, dispo
+              prix_seul, prix_menu, prix_classic, prix_maxi, allergenes, dispo, image
          FROM produits ORDER BY ordre`
     );
     const [options] = await pool.query(
